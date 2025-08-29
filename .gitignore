@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual environment
+.env
+venv/
+.venv/
+ENV/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+db_data/
+*.pid
+
+# Coverage / test
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Compiled
+*.egg-info/
+dist/
+build/
+
+uv.lock
