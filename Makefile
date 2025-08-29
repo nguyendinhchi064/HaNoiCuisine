@@ -1,60 +1,71 @@
 SHELL := /bin/bash
 
-# Variables definitions
-# -----------------------------------------------------------------------------
+# Defaults
+TIMEOUT     ?= 60
+MODEL_PATH  ?= ./ml/model/
+MODEL_NAME  ?= model.pkl
 
-ifeq ($(TIMEOUT),)
-TIMEOUT := 60
+# Detect uv (empty if not installed)
+UV := $(shell command -v uv 2>/dev/null)
+
+.PHONY: all clean test install run deploy down generate_dot_env venv ensure_uv
+
+all: clean test
+
+# ---- Tooling / env ----------------------------------------------------------
+ensure_uv:
+ifeq ($(UV),)
+	@echo "uv not found — installing with pip..."
+	python -m pip install --upgrade pip
+	python -m pip install uv
+	$(eval UV := $(shell command -v uv 2>/dev/null))
 endif
 
-ifeq ($(MODEL_PATH),)
-MODEL_PATH := ./ml/model/
-endif
-
-ifeq ($(MODEL_NAME),)
-MODEL_NAME := model.pkl
-endif
-
-# Target section and Global definitions
-# -----------------------------------------------------------------------------
-.PHONY: all clean test install run deploy down
-
-all: clean test install run deploy down
-
-venv:
+venv: ensure_uv
+ifeq ($(UV),)
+	@echo "Creating .venv via stdlib venv (no uv available)"
+	python -m venv .venv
+	. .venv/bin/activate && python -m pip install --upgrade pip
+else
+	@echo "Creating .venv via uv"
 	uv venv .venv
-
-test: install
-	uv run pytest tests -vv --show-capture=all
+endif
 
 install: generate_dot_env venv
-	pip install uv --break-system-packages
-	uv pip install -e ".[dev]"
+ifeq ($(UV),)
+	. .venv/bin/activate && pip install -e ".[dev]"
+else
+	uv pip install --python .venv/bin/python -e ".[dev]"
+endif
 
-run: venv
-	PYTHONPATH=app/ uv run uvicorn main:app --reload --host 0.0.0.0 --port 8080
+test: install
+ifeq ($(UV),)
+	. .venv/bin/activate && pytest tests -vv --show-capture=all
+else
+	uv run --python .venv/bin/python pytest tests -vv --show-capture=all
+endif
+
+run: install
+	# Adjust module path below if your ASGI app is at app.main:app
+ifeq ($(UV),)
+	PYTHONPATH=app/ . .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+else
+	PYTHONPATH=app/ uv run --python .venv/bin/python uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+endif
 
 deploy: generate_dot_env
-	docker-compose build
-	docker-compose up -d
+	docker compose build
+	docker compose up -d
 
 down:
-	docker-compose down
+	docker compose down
 
 generate_dot_env:
-	@if [[ ! -e .env ]]; then \
-		cp .env.example .env; \
-	fi
+	@if [[ ! -e .env ]]; then cp .env.example .env; fi
 
 clean:
-	@find . -name '*.pyc' -exec rm -rf {} \;
-	@find . -name '__pycache__' -exec rm -rf {} \;
-	@find . -name 'Thumbs.db' -exec rm -rf {} \;
-	@find . -name '*~' -exec rm -rf {} \;
-	rm -rf .cache
-	rm -rf build
-	rm -rf dist
-	rm -rf *.egg-info
-	rm -rf htmlcov
-	rm -rf .tox/
-	rm -rf docs/_build
+	@find . -name '*.pyc' -delete
+	@find . -name '__pycache__' -exec rm -rf {} +
+	@find . -name 'Thumbs.db' -delete
+	@find . -name '*~' -delete
+	rm -rf .cache build dist *.egg-info htmlcov .tox/ docs/_build .venv
