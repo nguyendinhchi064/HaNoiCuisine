@@ -22,6 +22,7 @@ def fetch_weather_cached(lat: float, lon: float, ttl_sec: int = 900) -> dict:
     with httpx.Client(timeout=10) as client:
         r = client.get("https://api.openweathermap.org/data/2.5/weather", params=params)
         if r.status_code == 401:
+            #Watch out this exception
             raise HTTPException(status_code=401, detail="OpenWeather: Unauthorized (check/activate API key)")
         r.raise_for_status()
         payload = r.json()
