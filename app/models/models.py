@@ -43,6 +43,7 @@ class User(Base):
 
 
 # ---------- Places (shareable + moderation) ----------
+# the performance is so poor
 class Place(Base):
     __tablename__ = "places"
 

@@ -103,7 +103,7 @@ def list_places(
         query = query.filter(models.Place.is_public.is_(True))
     if only_approved:
         query = query.filter(models.Place.status == 'approved')
-
+#Ellastesearch
     if q:
         like = f"%{q}%"
         query = query.filter(
